@@ -67,7 +67,7 @@ loansRouter.get('/', async (_req: Request, res: Response) => {
 
     const enriched = loans.map(enrichLoan);
     // Ordenar: atrasados (lateDays > 0) primeiro
-    enriched.sort((a, b) => b.snapshot.lateDays - a.snapshot.lateDays);
+    enriched.sort((a: any, b: any) => b.snapshot.lateDays - a.snapshot.lateDays);
 
     res.json(enriched);
   } catch (error) {

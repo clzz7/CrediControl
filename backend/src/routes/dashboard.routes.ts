@@ -24,11 +24,11 @@ dashboardRouter.get('/', async (_req: Request, res: Response) => {
     });
 
     // Saída = soma de todos os saldos de principal ativos
-    const saida = emprestimosAtivos.reduce((acc, l) => acc + l.currentPrincipal, 0);
+    const saida = emprestimosAtivos.reduce((acc: number, l: any) => acc + l.currentPrincipal, 0);
 
     // Atrasados = D+31 ou mais
     const msPerDay = 1000 * 60 * 60 * 24;
-    const totalAtrasados = emprestimosAtivos.filter((l) => {
+    const totalAtrasados = emprestimosAtivos.filter((l: any) => {
       const dias = Math.floor((now.getTime() - l.lastRenewalDate.getTime()) / msPerDay);
       return dias > 30;
     }).length;
@@ -42,9 +42,9 @@ dashboardRouter.get('/', async (_req: Request, res: Response) => {
       },
     });
 
-    const entradaTotal = pagamentos.reduce((acc, p) => acc + p.totalAmountPaid, 0);
+    const entradaTotal = pagamentos.reduce((acc: number, p: any) => acc + p.totalAmountPaid, 0);
     const rendimentoTotal = pagamentos.reduce(
-      (acc, p) => acc + p.amountToPenalty + p.amountToInterest,
+      (acc: number, p: any) => acc + p.amountToPenalty + p.amountToInterest,
       0,
     );
 
