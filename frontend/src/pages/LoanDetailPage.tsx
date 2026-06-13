@@ -3,9 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, MessageCircle, CreditCard,
-  AlertTriangle, ChevronDown, ChevronUp, X, Check, Calculator, Info, RefreshCw
+  AlertTriangle, ChevronDown, ChevronUp, X, Check, Calculator, Info, RefreshCw, Trash2
 } from 'lucide-react'
-import { getLoan, registerPayment } from '../api'
+import { getLoan, registerPayment, deleteLoan } from '../api'
 import { formatCurrency, parseCurrency, formatCurrencyInput, formatDate, buildWhatsAppLink } from '../utils'
 import type { Payment } from '../types'
 
@@ -25,7 +25,7 @@ export default function LoanDetailPage() {
   })
 
   const payMut = useMutation({
-    mutationFn: (data: { totalAmountPaid: number; notes?: string }) =>
+    mutationFn: (data: { totalAmountPaid: number; discountAmount?: number; notes?: string }) =>
       registerPayment(id!, data),
     onSuccess: (data) => {
       qc.setQueryData(['loan', id], data.loan)
@@ -34,6 +34,21 @@ export default function LoanDetailPage() {
       setShowPayment(false)
     },
   })
+
+  const deleteMut = useMutation({
+    mutationFn: deleteLoan,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['loans'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+      navigate(-1)
+    }
+  })
+
+  const handleDelete = () => {
+    if (window.confirm("Tem certeza que deseja excluir este registro? Esta ação removerá a dívida do painel.")) {
+      deleteMut.mutate(id!)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -71,7 +86,7 @@ export default function LoanDetailPage() {
             <p className="text-lg font-bold text-gray-900">{loan.debtor?.name}</p>
             <p className="text-xs text-gray-500">{loan.debtor?.phone}</p>
           </div>
-          <div className="text-right">
+          <div className="text-right flex items-center gap-2 justify-end">
             {isClosed ? (
               <span className="bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full">QUITADO</span>
             ) : isLate ? (
@@ -81,6 +96,13 @@ export default function LoanDetailPage() {
             ) : (
               <span className="bg-gray-100 text-gray-600 text-xs font-bold px-3 py-1 rounded-full">ATIVO</span>
             )}
+            <button 
+              onClick={handleDelete}
+              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              title="Excluir empréstimo"
+            >
+              <Trash2 size={16} />
+            </button>
           </div>
         </div>
 
@@ -210,7 +232,7 @@ export default function LoanDetailPage() {
       {showPayment && (
         <PaymentForm
           snapshot={snap}
-          onSubmit={(amount, notes) => payMut.mutate({ totalAmountPaid: amount, notes })}
+          onSubmit={(amount, discount, notes) => payMut.mutate({ totalAmountPaid: amount, discountAmount: discount, notes })}
           onCancel={() => setShowPayment(false)}
           loading={payMut.isPending}
           error={payMut.error?.message}
@@ -244,20 +266,22 @@ export default function LoanDetailPage() {
 
 function PaymentForm({ snapshot, onSubmit, onCancel, loading, error }: {
   snapshot: { totalPenaltyCents: number; accruedInterestCents: number; currentPrincipal: number; totalDueCents: number }
-  onSubmit: (amount: number, notes?: string) => void
+  onSubmit: (amount: number, discount: number, notes?: string) => void
   onCancel: () => void
   loading: boolean
   error?: string
 }) {
   const [value, setValue] = useState('')
+  const [discountValue, setDiscountValue] = useState('')
   const [notes, setNotes] = useState('')
   const cents = parseCurrency(value)
+  const discountCents = parseCurrency(discountValue)
 
   // Simulação de amortização em tempo real
   let remainingPenalty = snapshot.totalPenaltyCents
   let remainingInterest = snapshot.accruedInterestCents
   let remainingPrincipal = snapshot.currentPrincipal
-  let rem = cents
+  let rem = cents + discountCents
 
   const toPenalty = Math.min(rem, remainingPenalty); rem -= toPenalty; remainingPenalty -= toPenalty
   const toInterest = Math.min(rem, remainingInterest); rem -= toInterest; remainingInterest -= toInterest
@@ -277,13 +301,29 @@ function PaymentForm({ snapshot, onSubmit, onCancel, loading, error }: {
           autoFocus
           value={value}
           onChange={e => setValue(formatCurrencyInput(e.target.value))}
-          placeholder="0,00"
+          placeholder="Valor Pago"
           className="w-full bg-gray-50 border border-[#2e2e48] rounded-xl pl-10 pr-3 py-2.5 text-sm text-gray-900 placeholder-[#6b6b99] outline-none focus:border-emerald-500 transition-colors"
         />
       </div>
 
+      <div className="relative">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">R$</span>
+        <input
+          value={discountValue}
+          onChange={e => setDiscountValue(formatCurrencyInput(e.target.value))}
+          placeholder="Desconto Concedido (opcional)"
+          className="w-full bg-gray-50 border border-[#2e2e48] rounded-xl pl-10 pr-3 py-2.5 text-sm text-gray-900 placeholder-[#6b6b99] outline-none focus:border-emerald-500 transition-colors"
+        />
+      </div>
+
+      {(cents > 0 || discountCents > 0) && (
+        <div className="bg-emerald-50 text-emerald-800 text-xs font-semibold px-3 py-2 rounded-lg border border-emerald-200">
+          Total a Pagar com Desconto: {formatCurrency(Math.max(0, snapshot.totalDueCents - discountCents))}
+        </div>
+      )}
+
       {/* Preview de amortização */}
-      {cents > 0 && (
+      {(cents > 0 || discountCents > 0) && (
         <div className="bg-white rounded-xl p-3 space-y-2">
           <p className="text-[10px] text-gray-500 uppercase tracking-wider">Como será distribuído</p>
           {toPenalty > 0 && (
@@ -328,11 +368,11 @@ function PaymentForm({ snapshot, onSubmit, onCancel, loading, error }: {
       {error && <p className="text-xs text-red-600">{error}</p>}
 
       <button
-        onClick={() => onSubmit(cents, notes || undefined)}
-        disabled={loading || cents <= 0}
+        onClick={() => onSubmit(cents, discountCents, notes || undefined)}
+        disabled={loading || (cents === 0 && discountCents === 0)}
         className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-gray-900 text-sm font-semibold py-2.5 rounded-xl transition-all active:scale-95"
       >
-        {loading ? 'Registrando...' : `Confirmar ${cents > 0 ? formatCurrency(cents) : ''}`}
+        {loading ? 'Registrando...' : `Confirmar ${cents > 0 ? formatCurrency(cents) : (discountCents > 0 ? '(Apenas Desconto)' : '')}`}
       </button>
     </div>
   )
@@ -351,7 +391,12 @@ function PaymentRow({ payment }: { payment: Payment }) {
           )}
           <span className="text-xs text-gray-500">{formatDate(payment.paymentDate)}</span>
         </div>
-        <span className="text-sm font-bold text-gray-900">{formatCurrency(payment.totalAmountPaid)}</span>
+        <span className="text-sm font-bold text-gray-900 flex flex-col items-end">
+          {formatCurrency(payment.totalAmountPaid)}
+          {payment.discountAmount > 0 && (
+            <span className="text-[10px] text-emerald-600 font-normal block">+ {formatCurrency(payment.discountAmount)} desc.</span>
+          )}
+        </span>
       </div>
       <div className="flex gap-3 text-[10px] text-gray-500">
         {payment.amountToPenalty > 0 && <span>Multa: {formatCurrency(payment.amountToPenalty)}</span>}

@@ -29,8 +29,11 @@ export const getLoan = (id: string) =>
 export const createLoan = (data: { debtorId: string; principalAmount: number; startDate?: string }) =>
   api.post<Loan>('/loans', data).then(r => r.data);
 
-export const registerPayment = (loanId: string, data: { totalAmountPaid: number; notes?: string }) =>
+export const registerPayment = (loanId: string, data: { totalAmountPaid: number; discountAmount?: number; notes?: string }) =>
   api.post<{ payment: Payment; amortization: object; loan: Loan }>(`/loans/${loanId}/payments`, data).then(r => r.data);
+
+export const deleteLoan = (id: string) =>
+  api.delete<{ message: string }>(`/loans/${id}`).then(r => r.data);
 
 export const rolloverLoan = (loanId: string, data: { totalAmountPaid: number; notes?: string }) =>
   api.post<{ payment: Payment; loan: Loan; message: string }>(`/loans/${loanId}/rollover`, data).then(r => r.data);

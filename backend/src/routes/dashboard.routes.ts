@@ -35,6 +35,9 @@ dashboardRouter.get('/', async (_req: Request, res: Response) => {
 
     // ── Pagamentos totais ─────────────────────────────────────────────────
     const pagamentos = await prisma.payment.findMany({
+      where: {
+        loan: { status: { not: 'DELETED' } },
+      },
       select: {
         totalAmountPaid: true,
         amountToPenalty: true,

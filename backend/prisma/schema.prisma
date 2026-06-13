@@ -13,6 +13,7 @@ datasource db {
 enum LoanStatus {
   ACTIVE
   CLOSED
+  DELETED
 }
 
 model Debtor {
@@ -61,6 +62,8 @@ model Payment {
   paymentDate       DateTime @default(now())
   // true = este pagamento foi uma operação de rollover (pagar só os juros para renovar o prazo)
   isRollover        Boolean  @default(false)
+  // Valor concedido como desconto (em centavos), que somado ao totalAmountPaid abateu juros/multas/principal
+  discountAmount    Int      @default(0)
   notes             String?
 
   @@map("payments")

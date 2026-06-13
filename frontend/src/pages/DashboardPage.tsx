@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, ArrowDownLeft, ArrowUpRight, TrendingUp, Plus } from 'lucide-react'
-import { getDashboard, getLoans } from '../api'
+import { AlertTriangle, ArrowDownLeft, ArrowUpRight, TrendingUp, Plus, Trash2 } from 'lucide-react'
+import { getDashboard, getLoans, deleteLoan } from '../api'
 import { formatCurrency, formatDate } from '../utils'
 import type { Loan } from '../types'
 import NewLoanModal from '../components/NewLoanModal'
@@ -10,6 +10,15 @@ import SparklineCard from '../components/SparklineCard'
 
 export default function DashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const queryClient = useQueryClient()
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteLoan,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['loans'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    }
+  })
 
   const { data: dash, isLoading: loadingDash } = useQuery({
     queryKey: ['dashboard'],
@@ -115,7 +124,11 @@ export default function DashboardPage() {
         ) : (
           <div className="space-y-3">
             {loans?.map((loan: Loan) => (
-              <LoanCard key={loan.id} loan={loan} />
+              <LoanCard 
+                key={loan.id} 
+                loan={loan} 
+                onDelete={(id) => deleteMutation.mutate(id)} 
+              />
             ))}
           </div>
         )}
@@ -124,11 +137,18 @@ export default function DashboardPage() {
   )
 }
 
-function LoanCard({ loan }: { loan: Loan }) {
+function LoanCard({ loan, onDelete }: { loan: Loan, onDelete: (id: string) => void }) {
   const snap = loan.snapshot!
   const isLate = snap.lateDays > 0
   const dueDate = new Date(loan.lastRenewalDate)
   dueDate.setDate(dueDate.getDate() + 30)
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (window.confirm("Tem certeza que deseja excluir este registro? Esta ação removerá a dívida do painel.")) {
+      onDelete(loan.id)
+    }
+  }
 
   return (
     <Link
@@ -160,18 +180,27 @@ function LoanCard({ loan }: { loan: Loan }) {
         </div>
 
         {/* Valores */}
-        <div className="text-right shrink-0">
-          <p className={`font-bold text-base ${isLate ? 'text-red-600' : 'text-gray-900'}`}>
-            {formatCurrency(snap.totalDueCents)}
-          </p>
-          <p className="text-xs text-gray-500">
-            Principal: {formatCurrency(snap.currentPrincipal)}
-          </p>
-          {snap.totalPenaltyCents > 0 && (
-            <p className="text-[10px] text-red-600 mt-0.5">
-              +{formatCurrency(snap.totalPenaltyCents)} multa
+        <div className="text-right shrink-0 flex items-start gap-3">
+          <div>
+            <p className={`font-bold text-base ${isLate ? 'text-red-600' : 'text-gray-900'}`}>
+              {formatCurrency(snap.totalDueCents)}
             </p>
-          )}
+            <p className="text-xs text-gray-500">
+              Principal: {formatCurrency(snap.currentPrincipal)}
+            </p>
+            {snap.totalPenaltyCents > 0 && (
+              <p className="text-[10px] text-red-600 mt-0.5">
+                +{formatCurrency(snap.totalPenaltyCents)} multa
+              </p>
+            )}
+          </div>
+          <button
+            onClick={handleDelete}
+            className="p-1.5 text-red-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            title="Excluir empréstimo"
+          >
+            <Trash2 size={16} />
+          </button>
         </div>
       </div>
     </Link>

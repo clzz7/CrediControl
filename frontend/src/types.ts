@@ -26,7 +26,7 @@ export interface Loan {
   currentPrincipal: number;
   startDate: string;
   lastRenewalDate: string;
-  status: 'ACTIVE' | 'CLOSED';
+  status: 'ACTIVE' | 'CLOSED' | 'DELETED';
   createdAt: string;
   payments?: Payment[];
   snapshot?: LoanSnapshot;
@@ -36,6 +36,7 @@ export interface Payment {
   id: string;
   loanId: string;
   totalAmountPaid: number;
+  discountAmount: number;
   amountToPenalty: number;
   amountToInterest: number;
   amountToPrincipal: number;

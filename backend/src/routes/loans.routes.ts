@@ -31,7 +31,13 @@ const PaymentSchema = z.object({
   totalAmountPaid: z
     .number()
     .int('Valor deve ser inteiro (centavos)')
-    .positive('Valor deve ser positivo'),
+    .nonnegative('Valor não pode ser negativo'),
+  /** Desconto concedido em centavos */
+  discountAmount: z
+    .number()
+    .int('Valor deve ser inteiro (centavos)')
+    .nonnegative('Desconto não pode ser negativo')
+    .optional(),
   notes: z.string().optional(),
 });
 
@@ -152,7 +158,7 @@ loansRouter.post('/', async (req: Request, res: Response) => {
 
 loansRouter.post('/:id/payments', async (req: Request, res: Response) => {
   try {
-    const { totalAmountPaid, notes } = PaymentSchema.parse(req.body);
+    const { totalAmountPaid, discountAmount, notes } = PaymentSchema.parse(req.body);
 
     const loan = await prisma.loan.findUnique({ 
       where: { id: req.params['id'] as string },
@@ -165,7 +171,8 @@ loansRouter.post('/:id/payments', async (req: Request, res: Response) => {
 
     const snapshot = enrichLoan(loan).snapshot;
 
-    const amortization = applyAmortization(totalAmountPaid, snapshot);
+    const effectiveAmount = totalAmountPaid + (discountAmount || 0);
+    const amortization = applyAmortization(effectiveAmount, snapshot);
 
     // Transação atômica: salvar payment + atualizar loan
     const [payment, updatedLoan] = await prisma.$transaction([
@@ -173,6 +180,7 @@ loansRouter.post('/:id/payments', async (req: Request, res: Response) => {
         data: {
           loanId: loan.id,
           totalAmountPaid,
+          discountAmount: discountAmount || 0,
           amountToPenalty: amortization.appliedToPenalty,
           amountToInterest: amortization.appliedToInterest,
           amountToPrincipal: amortization.appliedToPrincipal,
@@ -285,5 +293,26 @@ loansRouter.post('/:id/rollover', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Dados inválidos', details: error.errors });
     }
     res.status(500).json({ error: 'Erro ao renovar empréstimo' });
+  }
+});
+
+// ── DELETE /loans/:id ─────────────────────────────────────────────────────────
+// Soft delete do empréstimo
+
+loansRouter.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const loanId = req.params['id'] as string;
+    
+    const loan = await prisma.loan.findUnique({ where: { id: loanId } });
+    if (!loan) return res.status(404).json({ error: 'Empréstimo não encontrado' });
+    
+    await prisma.loan.update({
+      where: { id: loanId },
+      data: { status: 'DELETED' }
+    });
+    
+    res.status(200).json({ message: 'Empréstimo excluído com sucesso' });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao excluir empréstimo' });
   }
 });
