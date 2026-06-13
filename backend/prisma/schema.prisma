@@ -1,0 +1,67 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LoanStatus {
+  ACTIVE
+  CLOSED
+}
+
+model Debtor {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  loans     Loan[]
+
+  @@map("debtors")
+}
+
+model Loan {
+  id               String     @id @default(uuid())
+  debtorId         String
+  debtor           Debtor     @relation(fields: [debtorId], references: [id])
+  // Valor original emprestado (em centavos). Nunca muda após a criação.
+  principalAmount  Int
+  // Saldo devedor atual do principal (em centavos). Reduzido a cada pagamento que atinge a camada principal.
+  currentPrincipal Int
+  // Data em que o dinheiro foi entregue (âncora inicial para calcular d).
+  startDate        DateTime
+  // Data da última renovação (rollover). Usada como âncora para calcular d e detectar atraso (D+31).
+  // Começa com startDate. Só é atualizada em operações de ROLLOVER, nunca em pagamentos parciais comuns.
+  lastRenewalDate  DateTime
+  status           LoanStatus @default(ACTIVE)
+  createdAt        DateTime   @default(now())
+  payments         Payment[]
+
+  @@map("loans")
+}
+
+model Payment {
+  id                String   @id @default(uuid())
+  loanId            String
+  loan              Loan     @relation(fields: [loanId], references: [id])
+  // Valor bruto entregue pelo cliente (em centavos)
+  totalAmountPaid   Int
+  // Parcela que foi para abater multa de atraso (em centavos)
+  amountToPenalty   Int      @default(0)
+  // Parcela que foi para abater juros acumulados (em centavos)
+  amountToInterest  Int      @default(0)
+  // Parcela que abateu efetivamente o principal (em centavos)
+  amountToPrincipal Int      @default(0)
+  paymentDate       DateTime @default(now())
+  // true = este pagamento foi uma operação de rollover (pagar só os juros para renovar o prazo)
+  isRollover        Boolean  @default(false)
+  notes             String?
+
+  @@map("payments")
+}

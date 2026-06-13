@@ -1,0 +1,19 @@
+{
+  "name": "credicontrol",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "test": "npm run test --workspace=backend",
+    "build": "npm run build --workspace=frontend && npm run build --workspace=backend",
+    "start": "node backend/dist/server.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
