@@ -28,12 +28,10 @@ app.use('/api/loans', loansRouter);
 app.use('/api/dashboard', dashboardRouter);
 
 // ── Serve Frontend em Produção ────────────────────────────────────────────────
+// Como o frontend está hospedado na Vercel, o backend serve apenas a API.
 if (isProd) {
-  const frontendDist = path.join(__dirname, '..', '..', 'frontend', 'dist');
-  app.use(express.static(frontendDist));
-  // SPA fallback: toda rota não-API devolve o index.html
-  app.get('*', (_req, res) => {
-    res.sendFile(path.join(frontendDist, 'index.html'));
+  app.get('/', (_req, res) => {
+    res.json({ message: 'CrediControl API is running. Access the frontend via Vercel.' });
   });
 }
 
