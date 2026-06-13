@@ -2,8 +2,8 @@ import axios from 'axios';
 import type { Dashboard, Debtor, Loan, Payment } from './types';
 
 // Em dev: proxy Vite redireciona /api → localhost:3001
-// Em prod: mesma origem (Express serve o frontend)
-const api = axios.create({ baseURL: '/api' });
+// Em prod (separado): VITE_API_URL aponta para a URL do Render
+const api = axios.create({ baseURL: import.meta.env.VITE_API_URL || '/api' });
 
 // ── Dashboard ─────────────────────────────────────────────────────────────
 export const getDashboard = () =>

@@ -13,7 +13,7 @@ const isProd = process.env.NODE_ENV === 'production';
 
 // ── Middlewares ───────────────────────────────────────────────────────────────
 app.use(cors({
-  origin: isProd ? false : (process.env.FRONTEND_URL ?? 'http://localhost:5173'),
+  origin: process.env.FRONTEND_URL || (isProd ? false : 'http://localhost:5173'),
   credentials: true,
 }));
 app.use(express.json());
