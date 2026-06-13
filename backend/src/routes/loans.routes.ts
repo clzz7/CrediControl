@@ -42,10 +42,25 @@ function enrichLoan(loan: {
   id: string;
   currentPrincipal: number;
   lastRenewalDate: Date;
+  payments?: { amountToInterest: number; amountToPenalty: number; paymentDate: Date }[];
   [key: string]: unknown;
 }) {
+  let paidInterest = 0;
+  let paidPenalty = 0;
+  
+  if (loan.payments) {
+    for (const p of loan.payments) {
+      if (p.paymentDate >= loan.lastRenewalDate) {
+        paidInterest += p.amountToInterest;
+        paidPenalty += p.amountToPenalty;
+      }
+    }
+  }
+
   const snapshot = calcLoanSnapshot(
     { currentPrincipal: loan.currentPrincipal, lastRenewalDate: loan.lastRenewalDate },
+    paidInterest,
+    paidPenalty,
     new Date(),
   );
   return { ...loan, snapshot };
@@ -61,6 +76,7 @@ loansRouter.get('/', async (_req: Request, res: Response) => {
       where: { status: 'ACTIVE' },
       include: {
         debtor: { select: { id: true, name: true, phone: true } },
+        payments: { orderBy: { paymentDate: 'desc' } },
       },
       orderBy: { lastRenewalDate: 'asc' },
     });
@@ -138,16 +154,16 @@ loansRouter.post('/:id/payments', async (req: Request, res: Response) => {
   try {
     const { totalAmountPaid, notes } = PaymentSchema.parse(req.body);
 
-    const loan = await prisma.loan.findUnique({ where: { id: req.params['id'] as string } });
+    const loan = await prisma.loan.findUnique({ 
+      where: { id: req.params['id'] as string },
+      include: { payments: { orderBy: { paymentDate: 'desc' } } }
+    });
     if (!loan) return res.status(404).json({ error: 'Empréstimo não encontrado' });
     if (loan.status === 'CLOSED') {
       return res.status(400).json({ error: 'Empréstimo já encerrado' });
     }
 
-    const snapshot = calcLoanSnapshot(
-      { currentPrincipal: loan.currentPrincipal, lastRenewalDate: loan.lastRenewalDate },
-      new Date(),
-    );
+    const snapshot = enrichLoan(loan).snapshot;
 
     const amortization = applyAmortization(totalAmountPaid, snapshot);
 
@@ -210,16 +226,16 @@ loansRouter.post('/:id/rollover', async (req: Request, res: Response) => {
   try {
     const { totalAmountPaid, notes } = PaymentSchema.parse(req.body);
 
-    const loan = await prisma.loan.findUnique({ where: { id: req.params['id'] as string } });
+    const loan = await prisma.loan.findUnique({ 
+      where: { id: req.params['id'] as string },
+      include: { payments: { orderBy: { paymentDate: 'desc' } } }
+    });
     if (!loan) return res.status(404).json({ error: 'Empréstimo não encontrado' });
     if (loan.status === 'CLOSED') {
       return res.status(400).json({ error: 'Empréstimo já encerrado' });
     }
 
-    const snapshot = calcLoanSnapshot(
-      { currentPrincipal: loan.currentPrincipal, lastRenewalDate: loan.lastRenewalDate },
-      new Date(),
-    );
+    const snapshot = enrichLoan(loan).snapshot;
 
     const validation = validateRollover(snapshot, totalAmountPaid);
     if (!validation.isValid) {

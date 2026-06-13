@@ -120,12 +120,19 @@ export function calcPenalty(days: number): number {
  */
 export function calcLoanSnapshot(
   loan: LoanSnapshot,
+  paidInterestCents: number = 0,
+  paidPenaltyCents: number = 0,
   referenceDate: Date = new Date(),
 ): LoanCalculation {
   const elapsedDays = calcElapsedDays(loan.lastRenewalDate, referenceDate);
   const lateDays = Math.max(0, elapsedDays - GRACE_PERIOD_DAYS);
-  const totalPenaltyCents = calcPenalty(elapsedDays);
-  const accruedInterestCents = calcAccruedInterest(loan.currentPrincipal, elapsedDays);
+  
+  const theoreticalPenalty = calcPenalty(elapsedDays);
+  const theoreticalInterest = calcAccruedInterest(loan.currentPrincipal, elapsedDays);
+
+  const totalPenaltyCents = Math.max(0, theoreticalPenalty - paidPenaltyCents);
+  const accruedInterestCents = Math.max(0, theoreticalInterest - paidInterestCents);
+
   const totalDueCents = loan.currentPrincipal + accruedInterestCents + totalPenaltyCents;
 
   return {
