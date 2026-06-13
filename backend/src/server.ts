@@ -13,7 +13,10 @@ const isProd = process.env.NODE_ENV === 'production';
 
 // ── Middlewares ───────────────────────────────────────────────────────────────
 app.use(cors({
-  origin: process.env.FRONTEND_URL || (isProd ? false : 'http://localhost:5173'),
+  origin: function (origin, callback) {
+    // Permite qualquer origem dinamicamente (resolve problemas com Vercel)
+    callback(null, true);
+  },
   credentials: true,
 }));
 app.use(express.json());
