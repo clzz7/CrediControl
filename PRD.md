@@ -14,8 +14,8 @@ Um sistema web desenhado para automatizar o controle de empréstimos pessoais. O
 Esta é a parte mais crítica do sistema. O código deve respeitar estritamente estas diretrizes matemáticas e operacionais:
 | Regra | Descrição Técnica |
 |---|---|
-| **Taxa de Juros** | 30% ao mês. A capitalização é diária (juros compostos) baseada nos dias corridos desde o início ou última renovação. |
-| **Cálculo do Montante** | O sistema deve calcular a dívida no momento da consulta usando a fórmula: M = P \times (1 + 0.30)^{\frac{d}{30}} (Onde M = Montante, P = Principal/Saldo Devedor, d = dias corridos). |
+| **Taxa de Juros** | 30% ao mês. A cobrança é baseada em juros simples, calculados sobre os dias corridos desde o início ou última renovação. |
+| **Cálculo do Montante** | O sistema deve calcular a dívida no momento da consulta usando a fórmula: M = P + (P \times 0.30 \times \frac{d}{30}) (Onde M = Montante, P = Principal/Saldo Devedor, d = dias corridos). |
 | **Multa de Atraso** | Acionada automaticamente no D+31 (1 dia após o vencimento de 30 dias). Taxa fixa de R$ 10,00 por dia de atraso. |
 | **Ordem de Amortização** | Quando um pagamento parcial é recebido, o dinheiro é deduzido na seguinte ordem: **1º** Multas de Atraso \rightarrow **2º** Juros Acumulados \rightarrow **3º** Valor Principal. |
 | **Renovação (Rolagem)** | Se o cliente pagar o valor exato dos juros do mês para adiar a dívida, o Valor Principal é mantido. O sistema registra o pagamento, zera a contagem de atrasos (multas) e redefine a Data Inicial/Renovação para o dia atual. |

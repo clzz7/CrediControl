@@ -145,9 +145,9 @@ export default function LoanDetailPage() {
             </button>
             {showMath && (
               <div className="p-3 bg-white text-[11px] text-gray-600 space-y-2 border-t border-gray-100">
-                <p className="font-semibold text-gray-800">Fórmula de Juros Compostos (30% ao mês)</p>
+                <p className="font-semibold text-gray-800">Fórmula de Juros Simples (30% ao mês)</p>
                 <div className="bg-gray-50 p-2 rounded text-center font-mono">
-                  M = P × (1,30) ^ (d / 30)
+                  M = P + (P × 0,30 × (d / 30))
                 </div>
                 <ul className="list-disc pl-4 space-y-0.5">
                   <li><strong>P (Principal):</strong> {formatCurrency(snap.currentPrincipal)}</li>

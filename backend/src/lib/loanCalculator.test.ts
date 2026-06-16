@@ -59,23 +59,20 @@ describe('calcAccruedInterest', () => {
     expect(calcAccruedInterest(100_000, 0)).toBe(0);
   });
 
-  it('deve retornar ~30% em 30 dias para R$ 1000,00', () => {
+  it('deve retornar exatos 30% em 30 dias para R$ 1000,00', () => {
     // Principal: R$ 1000,00 = 100.000 centavos
-    // M = 100000 × (1.30)^(30/30) = 100000 × 1.30 = 130.000
+    // Juros = 100000 × 0.30 × (30/30) = 30.000
     // Juros = 30.000 centavos = R$ 300,00
     const interest = calcAccruedInterest(100_000, 30);
     expect(interest).toBe(30_000);
   });
 
-  it('deve retornar juros menores que 30% para 15 dias (capitalização diária)', () => {
-    // M = 100000 × (1.30)^(15/30) = 100000 × (1.30)^0.5 ≈ 114017
-    // Juros ≈ 14017 centavos (< 30000)
+  it('deve retornar juros proporcionais para 15 dias (juros simples)', () => {
+    // Juros = 100000 × 0.30 × (15/30) = 15.000 centavos
     const interest = calcAccruedInterest(100_000, 15);
     expect(interest).toBeGreaterThan(0);
     expect(interest).toBeLessThan(30_000);
-    // Verifica o valor exato: floor(100000 * 1.30^0.5 - 100000)
-    const expected = Math.floor(100_000 * Math.pow(1.30, 0.5) - 100_000);
-    expect(interest).toBe(expected);
+    expect(interest).toBe(15_000);
   });
 
   it('deve funcionar para principal de 1 centavo', () => {
@@ -113,7 +110,7 @@ describe('calcPenalty', () => {
 describe('calcLoanSnapshot', () => {
   it('deve calcular snapshot correto no dia 0 (empréstimo recém-criado)', () => {
     const loan = { currentPrincipal: 100_000, lastRenewalDate: new Date() };
-    const snap = calcLoanSnapshot(loan, new Date());
+    const snap = calcLoanSnapshot(loan, 0, 0, new Date());
     expect(snap.elapsedDays).toBe(0);
     expect(snap.accruedInterestCents).toBe(0);
     expect(snap.totalPenaltyCents).toBe(0);
@@ -124,7 +121,7 @@ describe('calcLoanSnapshot', () => {
     const anchor = makeDate(2025, 1, 1);
     const today = makeDate(2025, 1, 31);
     const loan = { currentPrincipal: 100_000, lastRenewalDate: anchor };
-    const snap = calcLoanSnapshot(loan, today);
+    const snap = calcLoanSnapshot(loan, 0, 0, today);
 
     expect(snap.elapsedDays).toBe(30);
     expect(snap.lateDays).toBe(0);
@@ -137,13 +134,13 @@ describe('calcLoanSnapshot', () => {
     const anchor = makeDate(2025, 1, 1);
     const today = makeDate(2025, 2, 1); // 31 dias depois
     const loan = { currentPrincipal: 100_000, lastRenewalDate: anchor };
-    const snap = calcLoanSnapshot(loan, today);
+    const snap = calcLoanSnapshot(loan, 0, 0, today);
 
     expect(snap.elapsedDays).toBe(31);
     expect(snap.lateDays).toBe(1);
     expect(snap.totalPenaltyCents).toBe(1_000); // R$ 10,00
-    // Juros: 100000 × 1.30^(31/30) - 100000
-    const expectedInterest = Math.floor(100_000 * Math.pow(1.30, 31 / 30) - 100_000);
+    // Juros: 100000 × 0.30 × (31/30)
+    const expectedInterest = Math.floor(100_000 * 0.30 * (31 / 30));
     expect(snap.accruedInterestCents).toBe(expectedInterest);
     expect(snap.totalDueCents).toBe(100_000 + expectedInterest + 1_000);
   });
@@ -156,7 +153,7 @@ describe('applyAmortization — ordem: Multa → Juros → Principal', () => {
     const anchor = makeDate(2025, 1, 1);
     const today = makeDate(2025, 1, 31);
     const loan = { currentPrincipal: 100_000, lastRenewalDate: anchor };
-    const snap = calcLoanSnapshot(loan, today);
+    const snap = calcLoanSnapshot(loan, 0, 0, today);
     // Paga o montante exato: 130.000 centavos
     const result = applyAmortization(130_000, snap);
 
@@ -173,7 +170,7 @@ describe('applyAmortization — ordem: Multa → Juros → Principal', () => {
     const anchor = makeDate(2025, 1, 1);
     const today = makeDate(2025, 2, 5);
     const loan = { currentPrincipal: 50_000, lastRenewalDate: anchor };
-    const snap = calcLoanSnapshot(loan, today);
+    const snap = calcLoanSnapshot(loan, 0, 0, today);
 
     // Paga R$ 100,00 (10.000 centavos)
     const result = applyAmortization(10_000, snap);
@@ -192,7 +189,7 @@ describe('applyAmortization — ordem: Multa → Juros → Principal', () => {
     const anchor = makeDate(2025, 1, 1);
     const today = makeDate(2025, 1, 31);
     const loan = { currentPrincipal: 100_000, lastRenewalDate: anchor };
-    const snap = calcLoanSnapshot(loan, today);
+    const snap = calcLoanSnapshot(loan, 0, 0, today);
 
     // Paga 200.000 (dívida é 130.000)
     const result = applyAmortization(200_000, snap);
@@ -205,7 +202,7 @@ describe('applyAmortization — ordem: Multa → Juros → Principal', () => {
     const anchor = makeDate(2025, 1, 1);
     const today = makeDate(2025, 1, 31);
     const loan = { currentPrincipal: 100_000, lastRenewalDate: anchor };
-    const snap = calcLoanSnapshot(loan, today);
+    const snap = calcLoanSnapshot(loan, 0, 0, today);
     const result = applyAmortization(0, snap);
 
     expect(result.appliedToPenalty).toBe(0);
@@ -217,7 +214,7 @@ describe('applyAmortization — ordem: Multa → Juros → Principal', () => {
 
   it('deve encerrar o empréstimo se o pagamento reduzir o principal a zero exato', () => {
     const loan = { currentPrincipal: 50_000, lastRenewalDate: new Date() };
-    const snap = calcLoanSnapshot(loan, new Date());
+    const snap = calcLoanSnapshot(loan, 0, 0, new Date());
     // Pagamento igual ao principal (dia 0, sem juros)
     const result = applyAmortization(50_000, snap);
     expect(result.isClosed).toBe(true);
@@ -232,7 +229,7 @@ describe('validateRollover', () => {
     const anchor = makeDate(2025, 1, 1);
     const today = makeDate(2025, 1, 31);
     const loan = { currentPrincipal: 100_000, lastRenewalDate: anchor };
-    const snap = calcLoanSnapshot(loan, today);
+    const snap = calcLoanSnapshot(loan, 0, 0, today);
     // Juros = 30.000, multa = 0, requerido = 30.000
     const result = validateRollover(snap, 30_000);
 
@@ -244,7 +241,7 @@ describe('validateRollover', () => {
     const anchor = makeDate(2025, 1, 1);
     const today = makeDate(2025, 1, 31);
     const loan = { currentPrincipal: 100_000, lastRenewalDate: anchor };
-    const snap = calcLoanSnapshot(loan, today);
+    const snap = calcLoanSnapshot(loan, 0, 0, today);
     const result = validateRollover(snap, 20_000); // insuficiente
 
     expect(result.isValid).toBe(false);
@@ -253,7 +250,7 @@ describe('validateRollover', () => {
 
   it('deve rejeitar rollover no dia 0 (sem juros acumulados)', () => {
     const loan = { currentPrincipal: 100_000, lastRenewalDate: new Date() };
-    const snap = calcLoanSnapshot(loan, new Date());
+    const snap = calcLoanSnapshot(loan, 0, 0, new Date());
     const result = validateRollover(snap, 0);
 
     expect(result.isValid).toBe(false);
@@ -261,11 +258,11 @@ describe('validateRollover', () => {
   });
 
   it('deve exigir juros + multas para rollover com atraso', () => {
-    // D+35: juros compostos + 5 dias de multa
+    // D+35: juros simples + 5 dias de multa
     const anchor = makeDate(2025, 1, 1);
     const today = makeDate(2025, 2, 5);
     const loan = { currentPrincipal: 100_000, lastRenewalDate: anchor };
-    const snap = calcLoanSnapshot(loan, today);
+    const snap = calcLoanSnapshot(loan, 0, 0, today);
 
     const required = snap.accruedInterestCents + snap.totalPenaltyCents;
     expect(required).toBeGreaterThan(30_000); // mais que os juros puros

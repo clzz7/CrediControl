@@ -6,8 +6,8 @@
  * Todos os valores monetários são representados em CENTAVOS (inteiros).
  *
  * Regras de negócio implementadas (conforme PRD seção 3):
- *   - Taxa: 30% ao mês, capitalização diária composta
- *   - Fórmula: M = P × (1.30)^(d/30)
+ *   - Taxa: 30% ao mês, juros simples
+ *   - Fórmula: Juros = P × 0.30 × (d/30)
  *   - Multa: R$ 10,00/dia (= 1000 centavos) a partir do D+31
  *   - Amortização: Multa → Juros → Principal
  *   - lastRenewalDate só é atualizada em operações de ROLLOVER
@@ -83,17 +83,17 @@ export function calcElapsedDays(from: Date, to: Date): number {
 }
 
 /**
- * Calcula os juros compostos acumulados (em centavos, arredondado para baixo).
- * Fórmula: M = P × (1.30)^(d/30)
- * Juros = M - P
+ * Calcula os juros simples acumulados (em centavos, arredondado para baixo).
+ * Fórmula: Juros = P × 0.30 × (d/30)
+ *
  *
  * @param principalCents - Saldo devedor do principal em centavos
  * @param days - Dias corridos desde a data âncora
  */
 export function calcAccruedInterest(principalCents: number, days: number): number {
   if (days <= 0) return 0;
-  const montante = principalCents * Math.pow(1 + MONTHLY_RATE, days / 30);
-  return Math.floor(montante - principalCents);
+  const juros = principalCents * MONTHLY_RATE * (days / 30);
+  return Math.floor(juros);
 }
 
 /**
