@@ -67,12 +67,10 @@ describe('calcAccruedInterest', () => {
     expect(interest).toBe(30_000);
   });
 
-  it('deve retornar juros proporcionais para 15 dias (juros simples)', () => {
-    // Juros = 100000 × 0.30 × (15/30) = 15.000 centavos
+  it('deve retornar juros integrais de 30% mesmo antes de 30 dias', () => {
+    // Juros = 100000 × 0.30 = 30.000 centavos
     const interest = calcAccruedInterest(100_000, 15);
-    expect(interest).toBeGreaterThan(0);
-    expect(interest).toBeLessThan(30_000);
-    expect(interest).toBe(15_000);
+    expect(interest).toBe(30_000);
   });
 
   it('deve funcionar para principal de 1 centavo', () => {
@@ -139,8 +137,8 @@ describe('calcLoanSnapshot', () => {
     expect(snap.elapsedDays).toBe(31);
     expect(snap.lateDays).toBe(1);
     expect(snap.totalPenaltyCents).toBe(1_000); // R$ 10,00
-    // Juros: 100000 × 0.30 × (31/30)
-    const expectedInterest = Math.floor(100_000 * 0.30 * (31 / 30));
+    // Juros: 100000 × 0.30
+    const expectedInterest = Math.floor(100_000 * 0.30);
     expect(snap.accruedInterestCents).toBe(expectedInterest);
     expect(snap.totalDueCents).toBe(100_000 + expectedInterest + 1_000);
   });

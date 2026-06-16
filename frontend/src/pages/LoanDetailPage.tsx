@@ -145,16 +145,15 @@ export default function LoanDetailPage() {
             </button>
             {showMath && (
               <div className="p-3 bg-white text-[11px] text-gray-600 space-y-2 border-t border-gray-100">
-                <p className="font-semibold text-gray-800">Fórmula de Juros Simples (30% ao mês)</p>
+                <p className="font-semibold text-gray-800">Fórmula de Juros (Taxa Fixa de 30%)</p>
                 <div className="bg-gray-50 p-2 rounded text-center font-mono">
-                  M = P + (P × 0,30 × (d / 30))
+                  M = P + (P × 0,30)
                 </div>
                 <ul className="list-disc pl-4 space-y-0.5">
                   <li><strong>P (Principal):</strong> {formatCurrency(snap.currentPrincipal)}</li>
-                  <li><strong>d (Dias decorridos):</strong> {snap.elapsedDays} dias (desde {formatDate(loan.lastRenewalDate)})</li>
-                  <li><strong>M (Montante final):</strong> {formatCurrency(snap.currentPrincipal + snap.accruedInterestCents)}</li>
+                  <li><strong>M (Montante final antes da multa):</strong> {formatCurrency(snap.currentPrincipal + snap.accruedInterestCents)}</li>
                 </ul>
-                <p>Juros Acumulados = M - P = <strong>{formatCurrency(snap.accruedInterestCents)}</strong></p>
+                <p>Juros Fixos Acumulados = M - P = <strong>{formatCurrency(snap.accruedInterestCents)}</strong></p>
                 
                 {snap.lateDays > 0 ? (
                   <>

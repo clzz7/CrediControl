@@ -83,8 +83,8 @@ export function calcElapsedDays(from: Date, to: Date): number {
 }
 
 /**
- * Calcula os juros simples acumulados (em centavos, arredondado para baixo).
- * Fórmula: Juros = P × 0.30 × (d/30)
+ * Calcula os juros fixos de 30% sobre o principal.
+ * Fórmula: Juros = P × 0.30
  *
  *
  * @param principalCents - Saldo devedor do principal em centavos
@@ -92,7 +92,8 @@ export function calcElapsedDays(from: Date, to: Date): number {
  */
 export function calcAccruedInterest(principalCents: number, days: number): number {
   if (days <= 0) return 0;
-  const juros = principalCents * MONTHLY_RATE * (days / 30);
+  // O juros é fixo de 30% para o ciclo. A multa por dia de atraso corre por fora.
+  const juros = principalCents * MONTHLY_RATE;
   return Math.floor(juros);
 }
 
